@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search</title>
+  </head>
+  <body>
+    <h1>Search</h1>
+    <form id="form">
+      <label for="param1">Parameter 1</label>
+      <input type="text" name="param1" id="param1" />
+      <label for="param2">Parameter 2</label>
+      <input type="text" name="param2" id="param2" />
+      <label for="param3">Parameter 3</label>
+      <input type="text" name="param3" id="param3" />
+
+      <button>Submit</button>
+    </form>
+  </body>
+
+  <script>
+    const getFormValues = () => {
+      const param1 = document.getElementById("param1").value;
+      const param2 = document.getElementById("param2").value;
+      const param3 = document.getElementById("param3").value;
+
+      return { param1, param2, param3 };
+    };
+
+    const handleSearch = (event) => {
+      event.preventDefault();
+
+      const data = getFormValues();
+
+      window.location.href = `/results?param1=${data.param1}&param2=${data.param2}&param3=${data.param3}`;
+    };
+
+    document.getElementById("form").addEventListener("submit", handleSearch);
+  </script>
+</html>

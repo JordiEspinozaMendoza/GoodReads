@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Results</title>
+  </head>
+  <body></body>
+  <script>
+    const showQueryParams = () => {
+      const params = new URLSearchParams(window.location.search);
+
+      const param1 = params.get("param1");
+      const param2 = params.get("param2");
+      const param3 = params.get("param3");
+
+      const result = document.createElement("p");
+      result.innerText = `Param 1: ${param1}, Param 2: ${param2}, Param 3: ${param3}`;
+
+      document.body.appendChild(result);
+    };
+
+    window.addEventListener("DOMContentLoaded", showQueryParams);
+  </script>
+</html>
