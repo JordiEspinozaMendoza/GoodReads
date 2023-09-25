@@ -1,26 +1,83 @@
 <!DOCTYPE html>
 <html lang="es-mx">
-    <head>
-        <title>Proyecto 01</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="css/style.css" rel="stylesheet">
-    </head>
-    <body>
-    <h1>La Biblioteca</h1>       
-    
+  <head>
+    <title>Proyecto 01</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <h1>La Biblioteca</h1>
+
     <article>
-            <h2><a href="\books\book1.html"> C# avanzado </a></h2>
-            <p> Pedro López, Juan Ruiz </p>
-            <br> 
-            <h2><a href="\books\book2.html"> El nuevo sistema operativo MS-DOS</a></h2>
-            <p> Joe Medina </p>
-            <br> 
-            <h2><a href="\books\book3.html"> La Metamorfosis </a></h2>
-            <p> Patrick Alvarado </p>
-            <br> 
-            <h2><a href="\books\book4.html"> La Danza de Hielo y Fuego </a></h2>
-            <p> R.R. González </p>
+      <h2><a href="\books\book1.html"> C# avanzado </a></h2>
+      <p>Pedro López, Juan Ruiz</p>
+      <br />
+      <h2>
+        <a href="\books\book2.html"> El nuevo sistema operativo MS-DOS</a>
+      </h2>
+      <p>Joe Medina</p>
+      <br />
+      <h2><a href="\books\book3.html"> La Metamorfosis </a></h2>
+      <p>Patrick Alvarado</p>
+      <br />
+      <h2><a href="\books\book4.html"> La Danza de Hielo y Fuego </a></h2>
+      <p>R.R. González</p>
     </article>
-    </body>
+    <div id="suggestions"></div>
+    <div id="read_again"></div>
+  </body>
+  <script>
+    const handleAddBooksToContainer = (books, container) => {
+      books.map((book) => {
+        const bookContainer = document.createElement("div");
+        const bookTitle = document.createElement("h3");
+        const bookLink = document.createElement("a");
+
+        bookTitle.innerText = book.title;
+        bookLink.innerText = "Ver libro";
+        bookLink.href = book.url;
+
+        bookContainer.appendChild(bookTitle);
+        bookContainer.appendChild(bookLink);
+
+        container.appendChild(bookContainer);
+      });
+
+      return container;
+    };
+
+    const handleOnLoad = async () => {
+      const suggestionsContainer = document.getElementById("suggestions");
+      const readAgainContainer = document.getElementById("read_again");
+
+      suggestionsContainer.innerHTML = "";
+
+      await fetch("/api/books/suggestion").then((response) =>
+        response.json().then((data) => {
+          suggestionsContainer.innerHTML = "";
+          readAgainContainer.innerHTML = "";
+
+          if (data.suggestions.length) {
+            const suggestionsTitle = document.createElement("h2");
+
+            suggestionsTitle.innerText = "Sugerencias";
+            suggestionsContainer.appendChild(suggestionsTitle);
+
+            handleAddBooksToContainer(data.suggestions, suggestionsContainer);
+          }
+
+          if (data.read_again.length) {
+            const readAgainTitle = document.createElement("h2");
+
+            readAgainTitle.innerText = "Leer de nuevo";
+            readAgainContainer.appendChild(readAgainTitle);
+
+            handleAddBooksToContainer(data.read_again, readAgainContainer);
+          }
+        })
+      );
+    };
+
+    document.addEventListener("DOMContentLoaded", handleOnLoad);
+  </script>
 </html>
