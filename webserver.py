@@ -2,12 +2,20 @@ from functools import cached_property
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qsl, urlparse
+from utils import CustomHTMLParser, get_formatted_book
 import re
 import os
 import redis
+import uuid
+import os
+import sys
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 mapping = [
-    (r"^/books/search", "get_api_search"),
+    (r"^/api/books/search", "get_api_search"),
     (r"^/books/(?P<book_file>.+)$", "get_book"),
     (r"^/$", "get_index"),
     (r"^/index$", "get_index"),
@@ -17,12 +25,32 @@ mapping = [
 
 
 class WebRequestHandler(BaseHTTPRequestHandler):
+    @cached_property
+    def cookies(self):
+        return SimpleCookie(self.headers.get("Cookie"))
+
+    def set_book_cookie(self, session_id, max_age=100):
+        c = SimpleCookie()
+        c["session"] = session_id
+        c["session"]["max-age"] = max_age
+        self.send_header("Set-Cookie", c.output(header=""))
+
+    def get_book_session(self):
+        c = self.cookies
+        if not c:
+            print("No cookie")
+            c = SimpleCookie()
+            c["session"] = uuid.uuid4()
+        else:
+            print("Cookie found")
+        return c.get("session").value
+
     def get_book(self, book_file):
         self.url = urlparse(self.path)
 
         # Create redis connection
         r = redis.StrictRedis(
-            host="localhost",
+            host=os.getenv("REDIS_HOST"),
             port=6379,
             db=0,
             charset="utf-8",
@@ -55,47 +83,72 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         self.get_by_file_name("search.html")
 
     def get_api_search(self):
-        # get query string
-        query_values = dict(parse_qsl(self.url.query))
-        param1 = query_values.get("param1")
-        param2 = query_values.get("param2")
-        param3 = query_values.get("param3")
+        try:
+            query_values = dict(parse_qsl(self.url.query))
+            book_name = query_values.get("book_name")
+            author = query_values.get("author")
+            description = query_values.get("description")
 
-        # search in redis
-        r = redis.StrictRedis(
-            host="localhost",
-            port=6379,
-            db=0,
-            charset="utf-8",
-            decode_responses=True,
-        )
+            if not any([book_name, author, description]):
+                response = json.dumps({"books": []})
 
-        # Get data from redis from content
-        all_books = r.keys("*")
+                self.send_response(200)
+                self.end_headers()
 
-        response = []
-        # Search in each book
-        for book in all_books:
-            book_content = r.get(book)
+                self.wfile.write(response.encode("utf-8"))
+                return
 
-            if (
-                param1 in book_content
-                and param2 in book_content
-                and param3 in book_content
-            ):
-                print(f"Book found: {book}")
-                print(f"Book content: {book_content}")
-                response.append(book)
+            r = redis.StrictRedis(
+                host=os.getenv("REDIS_HOST"),
+                port=6379,
+                db=0,
+                charset="utf-8",
+                decode_responses=True,
+            )
 
-        # Close redis connection
-        r.connection_pool.disconnect()
+            # Get data from redis from content
+            all_books = r.keys("book*")
+            books_found = []
 
-        # Set response
-        self.send_response(200)
-        # Write headers
-        self.end_headers()
-        # Write body
-        self.wfile.write(str(response).encode("utf-8"))
+            for book in all_books:
+                book_content = r.get(book)
+
+                if book_name and book_name != "":
+                    book_name_parser = CustomHTMLParser("h2", "title")
+                    book_name_parser.feed(book_content)
+                    if book_name.lower() not in book_name_parser.data[0].lower():
+                        continue
+                    else:
+                        books_found.append(get_formatted_book(book_content))
+                        break
+                if author and author != "":
+                    author_parser = CustomHTMLParser("p", "author")
+                    author_parser.feed(book_content)
+                    if author.lower() not in author_parser.data[0].lower():
+                        continue
+                    else:
+                        books_found.append(get_formatted_book(book_content))
+                        break
+                if description and description != "":
+                    description_parser = CustomHTMLParser("p", "description")
+                    description_parser.feed(book_content)
+                    if description.lower() not in description_parser.data[0].lower():
+                        continue
+                    else:
+                        books_found.append(get_formatted_book(book_content))
+                        break
+
+            r.connection_pool.disconnect()
+            json_data = json.dumps({"books": books_found})
+
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json_data.encode("utf-8"))
+        except Exception as e:
+            print(f"Error: {e}, line: {sys.exc_info()[-1].tb_lineno}")
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(str(e).encode("utf-8"))
 
     def get_method(self, path):
         for pattern, method in mapping:
@@ -117,7 +170,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
 
 def set_redis_data():
-    r = redis.StrictRedis(host="localhost", port=6379, db=0)
+    r = redis.StrictRedis(host=os.getenv("REDIS_HOST"), port=6379, db=0)
     directory = "html/books"
 
     for file_name in os.listdir(directory):

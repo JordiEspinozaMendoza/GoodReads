@@ -8,32 +8,64 @@
   <body>
     <h1>Search</h1>
     <form id="form">
-      <label for="param1">Parameter 1</label>
-      <input type="text" name="param1" id="param1" />
-      <label for="param2">Parameter 2</label>
-      <input type="text" name="param2" id="param2" />
-      <label for="param3">Parameter 3</label>
-      <input type="text" name="param3" id="param3" />
-
+      <label for="author">Author</label>
+      <input type="text" name="author" id="author" />
+      <label for="book_name">Title</label>
+      <input type="text" name="book_name" id="book_name" />
+      <label for="description">Description</label>
+      <input type="text" name="description" id="description" />
       <button>Submit</button>
     </form>
+    <div id="response"></div>
   </body>
 
   <script>
     const getFormValues = () => {
-      const param1 = document.getElementById("param1").value;
-      const param2 = document.getElementById("param2").value;
-      const param3 = document.getElementById("param3").value;
+      const author = document.getElementById("author").value || "";
+      const book_name = document.getElementById("book_name").value || "";
+      const description = document.getElementById("description").value || "";
 
-      return { param1, param2, param3 };
+      return { author, book_name, description };
     };
 
-    const handleSearch = (event) => {
+    const handleSearch = async (event) => {
       event.preventDefault();
+
+      const responseContainer = document.getElementById("response");
 
       const data = getFormValues();
 
-      window.location.href = `/results?param1=${data.param1}&param2=${data.param2}&param3=${data.param3}`;
+      const queryString = new URLSearchParams(data).toString();
+      responseContainer.innerHTML = "Loading...";
+
+      await fetch(`/api/books/search_books?${queryString}`).then((response) =>
+        response.json().then((data) => {
+          responseContainer.innerHTML = "";
+          if (data.books.length) {
+            data.books.map((book) => {
+              const bookContainer = document.createElement("div");
+              const bookTitle = document.createElement("h2");
+              const bookAuthor = document.createElement("h3");
+              const bookDescription = document.createElement("p");
+
+              bookTitle.innerText = book.book_name;
+              bookAuthor.innerText = book.author;
+              bookDescription.innerText = book.description;
+
+              bookContainer.appendChild(bookTitle);
+              bookContainer.appendChild(bookAuthor);
+              bookContainer.appendChild(bookDescription);
+
+              responseContainer.appendChild(bookContainer);
+            });
+          } else {
+            const noBooks = document.createElement("p");
+            noBooks.innerText = "No books found";
+            responseContainer.appendChild(noBooks);
+          }
+          document.body.appendChild(responseContainer);
+        })
+      );
     };
 
     document.getElementById("form").addEventListener("submit", handleSearch);

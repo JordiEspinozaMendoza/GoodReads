@@ -2,11 +2,13 @@ from functools import cached_property
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qsl, urlparse
+import re
+import redis
+import uuid
+import os
 
-# Código basado en:
-# https://realpython.com/python-http-server/
-# https://docs.python.org/3/library/http.server.html
-# https://docs.python.org/3/library/http.cookies.html
+
+r = redis.Redis(host=os.environ["REDIS_HOST"], port=6379, db=0)
 
 
 class WebRequestHandler(BaseHTTPRequestHandler):
@@ -15,60 +17,83 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         return urlparse(self.path)
 
     @cached_property
-    def query_data(self):
-        return dict(parse_qsl(self.url.query))
-
-    @cached_property
-    def post_data(self):
-        content_length = int(self.headers.get("Content-Length", 0))
-        return self.rfile.read(content_length)
-
-    @cached_property
-    def form_data(self):
-        return dict(parse_qsl(self.post_data.decode("utf-8")))
-
-    @cached_property
     def cookies(self):
         return SimpleCookie(self.headers.get("Cookie"))
 
-    def do_GET(self):
-        # Este código no va aquí, es mejor
-        # sacarlo a su propio método.
-        # Es solo un ejemplo.
+    def set_book_cookie(self, session_id, max_age=10):
+        c = SimpleCookie()
+        c["session"] = session_id
+        c["session"]["max-age"] = max_age
+        self.send_header("Set-Cookie", c.output(header=""))
+
+    def get_book_session(self):
         c = self.cookies
         if not c:
             print("No cookie")
             c = SimpleCookie()
-            c["session"] = 1
-            c["session"]["max-age"] = 10
-            print(c)
+            c["session"] = uuid.uuid4()
         else:
             print("Cookie found")
-            session = c.get("session", 1)
-            c["session"]["max-age"] = 10
-            # Utiliza session como clave.
+        return c.get("session").value
+
+    def do_GET(self):
+        method = self.get_method(self.url.path)
+        if method:
+            method_name, dict_params = method
+            method = getattr(self, method_name)
+            method(**dict_params)
+            return
+        else:
+            self.send_error(404, "Not Found")
+
+    def get_book_recomendation(self, session_id, book_id):
+        r.rpush(session_id, book_id)
+        books = r.lrange(session_id, 0, 5)
+        print(session_id, books)
+        all_books = [str(i + 1) for i in range(4)]
+        new = [b for b in all_books if b not in [vb.decode() for vb in books]]
+        if new:
+            return new[0]
+
+    def get_book(self, book_id):
+        session_id = self.get_book_session()
+        book_recomendation = self.get_book_recomendation(session_id, book_id)
+        book_page = r.get(book_id)
+        if book_page:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.set_book_cookie(session_id)
+            self.end_headers()
+            response = f"""
+            {book_page.decode()}
+        <p>  Ruta: {self.path}            </p>
+        <p>  URL: {self.url}              </p>
+        <p>  HEADERS: {self.headers}      </p>
+        <p>  SESSION: {session_id}      </p>
+        <p>  Recomendación: {book_recomendation}      </p>
+"""
+            self.wfile.write(response.encode("utf-8"))
+        else:
+            self.send_error(404, "Not Found")
+
+    def get_index(self):
+        session_id = self.get_book_session()
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
-        self.send_header('Set-Cookie', c.output(header=''))
+        self.set_book_cookie(session_id)
         self.end_headers()
-        self.wfile.write(self.get_response().encode("utf-8"))
+        with open("html/index.html") as f:
+            response = f.read()
+        self.wfile.write(response.encode("utf-8"))
 
-    def do_POST(self):
-        self.do_GET()
+    def get_method(self, path):
+        for pattern, method in mapping:
+            match = re.match(pattern, path)
+            if match:
+                return (method, match.groupdict())
 
-    def get_response(self):
-        return f"""
-    <h1> Hola Web </h1>
-    <p>  Path: {self.path}         </p>
-    <p>  Headers: {self.headers}      </p>
-    <p>  Cookies: {self.cookies}      </p>
-    <p>  Query Data: {self.query_data}   </p>
-    <p>  Form Data: {self.form_data}   </p>
-    <code> 
-    curl -v -i 'http://127.0.0.1:8000?id=123&value=22' --data 'user=mariosky&password=clavesecreta' -H 'Cookie: session=3;eu_cookie_consent=true'
-    </code>
-"""
 
+mapping = [(r"^/books/(?P<book_id>\d+)$", "get_book"), (r"^/$", "get_index")]
 
 if __name__ == "__main__":
     print("Server starting...")
