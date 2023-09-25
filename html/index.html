@@ -1,26 +1,111 @@
 <!DOCTYPE html>
 <html lang="es-mx">
-    <head>
-        <title>Proyecto 01</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="css/style.css" rel="stylesheet">
-    </head>
-    <body>
-    <h1>La Biblioteca</h1>       
-    
-    <article>
-            <h2><a href="\books\book1.html"> C# avanzado </a></h2>
-            <p> Pedro López, Juan Ruiz </p>
-            <br> 
-            <h2><a href="\books\book2.html"> El nuevo sistema operativo MS-DOS</a></h2>
-            <p> Joe Medina </p>
-            <br> 
-            <h2><a href="\books\book3.html"> La Metamorfosis </a></h2>
-            <p> Patrick Alvarado </p>
-            <br> 
-            <h2><a href="\books\book4.html"> La Danza de Hielo y Fuego </a></h2>
-            <p> R.R. González </p>
-    </article>
-    </body>
+  <head>
+    <title>Proyecto 01</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <h3 id="session"></h3>
+    <h1>La Biblioteca</h1>
+
+    <article></article>
+    <div id="suggestions"></div>
+    <div id="read_again"></div>
+  </body>
+  <script>
+    const handleAddBooksToContainer = (books, container) => {
+      books.map((book) => {
+        const bookContainer = document.createElement("div");
+        const bookTitle = document.createElement("h3");
+        const bookLink = document.createElement("a");
+
+        bookTitle.innerText = book.title;
+        bookLink.innerText = "Ver libro";
+        bookLink.href = book.url;
+
+        bookContainer.appendChild(bookTitle);
+        bookContainer.appendChild(bookLink);
+
+        container.appendChild(bookContainer);
+      });
+
+      return container;
+    };
+
+    const handleShowSessionId = () => {
+      const sessionCookie = document.cookie
+        .split(";")
+        .find((cookie) => cookie.includes("session"));
+
+      if (sessionCookie) {
+        const sessionContainer = document.getElementById("session");
+
+        sessionContainer.innerText = `Session ID: ${
+          sessionCookie.split("=")[1]
+        }`;
+      }
+    };
+
+    const handleOnLoad = async () => {
+      handleShowSessionId();
+      const suggestionsContainer = document.getElementById("suggestions");
+      const readAgainContainer = document.getElementById("read_again");
+
+      suggestionsContainer.innerHTML = "";
+
+      await fetch("/api/books/suggestion").then((response) =>
+        response.json().then((data) => {
+          suggestionsContainer.innerHTML = "";
+          readAgainContainer.innerHTML = "";
+
+          if (data.suggestions.length) {
+            const suggestionsTitle = document.createElement("h2");
+
+            suggestionsTitle.innerText = "Sugerencias";
+            suggestionsContainer.appendChild(suggestionsTitle);
+
+            handleAddBooksToContainer(data.suggestions, suggestionsContainer);
+          }
+
+          if (data.read_again.length) {
+            const readAgainTitle = document.createElement("h2");
+
+            readAgainTitle.innerText = "Continuar leyendo";
+            readAgainContainer.appendChild(readAgainTitle);
+
+            handleAddBooksToContainer(data.read_again, readAgainContainer);
+          }
+        })
+      );
+      await fetch("/api/books").then((response) =>
+        response.json().then((data) => {
+          const article = document.querySelector("article");
+
+          article.innerHTML = "";
+
+          data.books.map((book) => {
+            const bookContainer = document.createElement("div");
+            const bookTitle = document.createElement("h2");
+            const bookAuthor = document.createElement("h3");
+            const bookLink = document.createElement("a");
+
+            bookTitle.innerText = book.book_name;
+            bookAuthor.innerText = book.author;
+
+            bookLink.innerText = "Ver libro";
+            bookLink.href = book.url;
+
+            bookContainer.appendChild(bookTitle);
+            bookContainer.appendChild(bookAuthor);
+            bookContainer.appendChild(bookLink);
+
+            article.appendChild(bookContainer);
+          });
+        })
+      );
+    };
+
+    document.addEventListener("DOMContentLoaded", handleOnLoad);
+  </script>
 </html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search</title>
+  </head>
+  <body>
+    <h1>Search</h1>
+    <form id="form">
+      <label for="author">Author</label>
+      <input type="text" name="author" id="author" />
+      <label for="book_name">Title</label>
+      <input type="text" name="book_name" id="book_name" />
+      <label for="description">Description</label>
+      <input type="text" name="description" id="description" />
+      <button>Submit</button>
+    </form>
+    <div id="response"></div>
+  </body>
+
+  <script>
+    const getFormValues = () => {
+      const author = document.getElementById("author").value || "";
+      const book_name = document.getElementById("book_name").value || "";
+      const description = document.getElementById("description").value || "";
+
+      return { author, book_name, description };
+    };
+
+    const handleSearch = async (event) => {
+      event.preventDefault();
+
+      const responseContainer = document.getElementById("response");
+
+      const data = getFormValues();
+
+      const queryString = new URLSearchParams(data).toString();
+      responseContainer.innerHTML = "Loading...";
+
+      await fetch(`/api/books/search_books?${queryString}`).then((response) =>
+        response.json().then((data) => {
+          responseContainer.innerHTML = "";
+          if (data.books.length) {
+            data.books.map((book) => {
+              const bookContainer = document.createElement("div");
+              const bookTitle = document.createElement("h2");
+              const bookAuthor = document.createElement("h3");
+              const bookDescription = document.createElement("p");
+
+              bookTitle.innerText = book.book_name;
+              bookAuthor.innerText = book.author;
+              bookDescription.innerText = book.description;
+
+              bookContainer.appendChild(bookTitle);
+              bookContainer.appendChild(bookAuthor);
+              bookContainer.appendChild(bookDescription);
+
+              responseContainer.appendChild(bookContainer);
+            });
+          } else {
+            const noBooks = document.createElement("p");
+            noBooks.innerText = "No books found";
+            responseContainer.appendChild(noBooks);
+          }
+          document.body.appendChild(responseContainer);
+        })
+      );
+    };
+
+    document.getElementById("form").addEventListener("submit", handleSearch);
+  </script>
+</html>
