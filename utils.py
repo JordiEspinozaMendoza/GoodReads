@@ -25,7 +25,7 @@ class CustomHTMLParser(HTMLParser):
             self.data.append(data)
 
 
-def get_formatted_book(book):
+def get_formatted_book(book, book_key):
     try:
         book_name_parser = CustomHTMLParser(("h2"), ("title"))
         book_name_parser.feed(book)
@@ -43,6 +43,7 @@ def get_formatted_book(book):
             "book_name": book_name,
             "author": author,
             "description": description,
+            "url": f"/books/{book_key}",
         }
     except Exception as e:
         print(f"Error: {e}, line: {sys.exc_info()[-1].tb_lineno}")
