@@ -36,4 +36,21 @@
       </p>
     </main>
   </body>
+  <script>
+    const handleShowSessionId = () => {
+      const sessionCookie = document.cookie
+        .split(";")
+        .find((cookie) => cookie.includes("session"));
+
+      if (sessionCookie) {
+        const sessionContainer = document.getElementById("session");
+
+        sessionContainer.innerText = `Session ID: ${
+          sessionCookie.split("=")[1]
+        }`;
+      }
+    };
+
+    document.addEventListener("DOMContentLoaded", handleOnLoad);
+  </script>
 </html>

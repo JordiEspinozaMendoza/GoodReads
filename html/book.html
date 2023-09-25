@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es-mx">
+  <head>
+    <title>Proyecto 01</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <h3 id="session"></h3>
+    <h1>La Biblioteca</h1>
+
+    <article></article>
+  </body>
+  <script>
+    const handleShowSessionId = () => {
+      const sessionCookie = document.cookie
+        .split(";")
+        .find((cookie) => cookie.includes("session"));
+
+      if (sessionCookie) {
+        const sessionContainer = document.getElementById("session");
+
+        sessionContainer.innerText = `Session ID: ${
+          sessionCookie.split("=")[1]
+        }`;
+      }
+    };
+
+    const handleOnLoad = async () => {
+      handleShowSessionId();
+
+      const bookContainer = document.querySelector("article");
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const book_key = urlParams.get("book_key");
+
+      await fetch(`/api/book/${book_key}`).then((response) =>
+        response.json().then((data) => {
+          const book = data;
+          const bookTitle = document.createElement("h2");
+          const bookAuthor = document.createElement("h3");
+          const bookDescription = document.createElement("p");
+
+          bookTitle.innerText = book.book_name;
+          bookAuthor.innerText = book.author;
+          bookDescription.innerText = book.description;
+
+          bookContainer.appendChild(bookTitle);
+          bookContainer.appendChild(bookAuthor);
+          bookContainer.appendChild(bookDescription);
+        })
+      );
+    };
+
+    document.addEventListener("DOMContentLoaded", handleOnLoad);
+  </script>
+</html>
