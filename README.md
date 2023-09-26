@@ -1,7 +1,9 @@
 # Proyecto 1 
 
 Nombre: Espinoza Mendoza Jordi
+
 Numero de control: 19211633
+
 Video: https://www.youtube.com/watch?v=zoKz9GCZO7w
 
 En este primer proyecto vamos a desarrollar una applicación web sencilla
